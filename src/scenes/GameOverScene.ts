@@ -27,13 +27,13 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5)
 
     this.add
-      .text(centerX, centerY + 20, 'Press SPACE to play again', {
+      .text(centerX, centerY + 20, 'Press SPACE for menu', {
         fontFamily: 'monospace',
         fontSize: '20px',
         color: '#ffffff',
       })
       .setOrigin(0.5)
 
-    this.input.keyboard!.once('keydown-SPACE', () => this.scene.start('GameScene'))
+    this.input.keyboard!.once('keydown-SPACE', () => this.scene.start('MenuScene'))
   }
 }

@@ -3,21 +3,26 @@ import type { PlayerId } from '../config/units.ts'
 
 export class EconomySystem {
   coins: Record<PlayerId, number>
-  lastIncomeAt: number
+  lastIncomeAt: Record<PlayerId, number>
+  intervalMs: Record<PlayerId, number>
   onChange?: (playerId: PlayerId, coins: number, delta: number) => void
 
-  constructor() {
+  constructor(incomeMultipliers: Partial<Record<PlayerId, number>> = {}) {
     this.coins = { 1: ECONOMY.startingCoins, 2: ECONOMY.startingCoins }
-    this.lastIncomeAt = 0
+    this.lastIncomeAt = { 1: 0, 2: 0 }
+    this.intervalMs = {
+      1: ECONOMY.incomeIntervalMs / (incomeMultipliers[1] ?? 1),
+      2: ECONOMY.incomeIntervalMs / (incomeMultipliers[2] ?? 1),
+    }
   }
 
   update(time: number): void {
-    if (time - this.lastIncomeAt >= ECONOMY.incomeIntervalMs) {
-      this.lastIncomeAt = time
-      this.coins[1] += ECONOMY.incomePerTick
-      this.coins[2] += ECONOMY.incomePerTick
-      this.onChange?.(1, this.coins[1], ECONOMY.incomePerTick)
-      this.onChange?.(2, this.coins[2], ECONOMY.incomePerTick)
+    for (const id of [1, 2] as PlayerId[]) {
+      if (time - this.lastIncomeAt[id] >= this.intervalMs[id]) {
+        this.lastIncomeAt[id] = time
+        this.coins[id] += ECONOMY.incomePerTick
+        this.onChange?.(id, this.coins[id], ECONOMY.incomePerTick)
+      }
     }
   }
 

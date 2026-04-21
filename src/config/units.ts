@@ -1,5 +1,7 @@
 export type UnitType = 'peasant' | 'knight' | 'archer' | 'cavalry' | 'dragon'
 export type PlayerId = 1 | 2
+export type GameMode = '1p' | '2p'
+export type Difficulty = 'easy' | 'medium' | 'hard'
 
 export interface UnitStats {
   cost: number
