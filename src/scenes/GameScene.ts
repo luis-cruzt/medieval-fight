@@ -8,10 +8,16 @@ import { Dragon } from '../entities/Dragon.ts'
 import { Soldier } from '../entities/Soldier.ts'
 import { EconomySystem } from '../systems/EconomySystem.ts'
 import { CombatSystem } from '../systems/CombatSystem.ts'
+import { AIController, DIFFICULTY_PROFILES } from '../systems/AIController.ts'
 import { UNITS, WORLD } from '../config/units.ts'
-import type { PlayerId, UnitType } from '../config/units.ts'
+import type { Difficulty, GameMode, PlayerId, UnitType } from '../config/units.ts'
 
 const ANIMATED_UNITS: UnitType[] = ['peasant', 'knight', 'archer', 'cavalry', 'dragon']
+
+interface GameSceneData {
+  mode?: GameMode
+  difficulty?: Difficulty
+}
 
 export class GameScene extends Phaser.Scene {
   economy!: EconomySystem
@@ -19,9 +25,17 @@ export class GameScene extends Phaser.Scene {
   castles!: Record<PlayerId, Castle>
   keys!: Record<string, Phaser.Input.Keyboard.Key>
   gameOver = false
+  mode: GameMode = '2p'
+  difficulty: Difficulty = 'medium'
+  ai: AIController | null = null
 
   constructor() {
     super('GameScene')
+  }
+
+  init(data: GameSceneData): void {
+    this.mode = data.mode ?? '2p'
+    this.difficulty = data.difficulty ?? 'medium'
   }
 
   preload(): void {
@@ -59,7 +73,11 @@ export class GameScene extends Phaser.Scene {
       2: new Castle(this, 2),
     }
 
-    this.economy = new EconomySystem()
+    const multipliers: Partial<Record<PlayerId, number>> = {}
+    if (this.mode === '1p') {
+      multipliers[2] = DIFFICULTY_PROFILES[this.difficulty].incomeMultiplier
+    }
+    this.economy = new EconomySystem(multipliers)
     this.combat = new CombatSystem(this, this.castles)
     this.combat.onCastleDestroyed = (winner) => this.endGame(winner)
     this.combat.onSoldierKilled = (killerId, reward) => {
@@ -88,11 +106,15 @@ export class GameScene extends Phaser.Scene {
     kb.on('keydown-E', () => this.trySpawn(1, 'archer'))
     kb.on('keydown-T', () => this.trySpawn(1, 'cavalry'))
     kb.on('keydown-R', () => this.trySpawn(1, 'dragon'))
-    kb.on('keydown-I', () => this.trySpawn(2, 'peasant'))
-    kb.on('keydown-O', () => this.trySpawn(2, 'knight'))
-    kb.on('keydown-P', () => this.trySpawn(2, 'archer'))
-    kb.on('keydown-L', () => this.trySpawn(2, 'cavalry'))
-    kb.on('keydown-K', () => this.trySpawn(2, 'dragon'))
+    if (this.mode === '2p') {
+      kb.on('keydown-I', () => this.trySpawn(2, 'peasant'))
+      kb.on('keydown-O', () => this.trySpawn(2, 'knight'))
+      kb.on('keydown-P', () => this.trySpawn(2, 'archer'))
+      kb.on('keydown-L', () => this.trySpawn(2, 'cavalry'))
+      kb.on('keydown-K', () => this.trySpawn(2, 'dragon'))
+    } else {
+      this.ai = new AIController(this, 2, this.difficulty)
+    }
 
     this.scene.launch('UIScene', { gameScene: this })
   }
@@ -120,6 +142,7 @@ export class GameScene extends Phaser.Scene {
     if (this.gameOver) return
     this.economy.update(time)
     this.combat.update(time, delta)
+    this.ai?.update(time)
   }
 
   registerUnitAnimations(): void {
